@@ -1,0 +1,588 @@
+<apex:page showHeader="true" sidebar="true" standardController="Case" extensions="CaseMergeController" recordSetVar="records">
+    <apex:outputPanel layout="none" rendered="{!IsLightningExperience}">
+        <head>
+            <apex:slds />
+        </head>
+    </apex:outputPanel>
+
+    <apex:form >
+        <apex:outputPanel layout="none" rendered="{!IsLightningExperience}">
+            <apex:actionFunction action="{!nextStep}" name="nextStep" rendered="{!ShowNextButton}"/>
+            <apex:actionFunction action="{!prevStep}" name="prevStep" rendered="{!ShowPrevButton}" />
+            <body class="slds-scope">
+                <article class="slds-card" style="position:fixed;width:100%;top:0;z-index:9000;">
+                    <div class="slds-card__header slds-grid" style="margin-bottom: 0px;">
+                        <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                            <div class="slds-media__body slds-align-middle">
+                                <nav role="navigation" aria-label="Breadcrumbs">
+                                    <ol class="slds-breadcrumb slds-list_horizontal slds-wrap">
+                                        <li class="slds-breadcrumb__item slds-text-title_caps">
+                                            <a href="javascript:navigateTo('{!CaseParentPrefix}');">{ !CaseParentType}</a>
+                                        </li>
+                                        <li class="slds-breadcrumb__item slds-text-title_caps">
+                                            <a href="javascript:navigateTo('{!CaseParent['Id']}');"> {!CaseParent['Name']}</a>
+                                        </li>
+                                    </ol>
+                                </nav>
+                                <h1 class="slds-page-header__title slds-truncate" title="{!$Label.casemerge__title}">{!$Label.casemerge__title}</h1>
+                            </div>
+                        </header>
+
+                        <div class="slds-col slds-no-flex slds-grid slds-align-top slds-p-bottom--xx-small test-lvmForceActionsContainer">
+                            <ul class="slds-button-group slds-m-left--xx-small small oneActionsRibbon forceActionsContainer">
+                                <apex:outputPanel layout="none" rendered="{!currentStep != 'SUCCESS_SCREEN'}">
+                                    <li class="slds-button slds-button--neutral slds-truncate">
+                                        <button class="slds-button slds-button_natural" onclick="event.preventDefault();navigateTo('{!CaseParent['Id']}');"> Cancel </button>
+                                    </li>
+                                </apex:outputPanel>
+                                <apex:outputPanel layout="none" rendered="{!ShowPrevButton}">
+                                    <li class="slds-button slds-button--neutral slds-truncate">
+                                        <button class="slds-button slds-button_natural" onclick="event.preventDefault();prevStep();">Previous</button>
+                                    </li>
+                                </apex:outputPanel>
+                                <apex:outputPanel layout="none" rendered="{!ShowNextButton}">
+                                    <li class="slds-button slds-button--neutral slds-truncate">
+                                        <button class="slds-button slds-button_natural" onclick="event.preventDefault();nextStep();">Next</button>
+                                    </li>
+                                </apex:outputPanel>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="slds-card__header slds-grid">
+                      <div class="slds-col slds-align-bottom" >
+                          <p class="slds-text-body--small" >
+                              <apex:outputPanel rendered="{!currentStep == 'CASE_SELECTION'}" styleClass="countSortedByFilteredBy uiOutputText">{!$Label.casemerge__records_selection_legend}</apex:outputPanel>
+                              <apex:outputPanel rendered="{!currentStep == 'CASE_MERGE'}" styleClass="countSortedByFilteredBy uiOutputText">{!$Label.casemerge__values_selection_legend}</apex:outputPanel>
+                          </p>
+                      </div>
+                    </div>
+
+                    <apex:outputPanel rendered="{!(LEN(errorMessage) > 0)}" layout="none">
+                        <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_info" role="alert">
+                            <span class="slds-assistive-text">{!errorMessage}</span>
+                            <h2>{!errorMessage}</h2>
+                        </div>
+                    </apex:outputPanel>
+
+                    <apex:outputPanel rendered="{!currentStep == 'SUCCESS_SCREEN'}" layout="none">
+                        <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_success" role="alert">
+                            <span class="slds-assistive-text">{!$Label.casemerge__casesmergedsuccessfully}</span>
+                            <h2>{!$Label.casemerge__casesmergedsuccessfully}</h2>
+                        </div>
+                    </apex:outputPanel>
+                </article>
+                <div class="slds-card__body" style="margin-top:{!IF(OR(LEN(errorMessage) > 0,currentStep == 'SUCCESS_SCREEN'),'136px','100px')};">
+                    <apex:outputPanel rendered="{!AND(currentStep == 'CASE_SELECTION', NOT(RelatedRecordsIsEmpty))}" layout="none">
+                        <table class="slds-table slds-table_fixed-layout slds-table_bordered slds-no-row-hover slds-table_cell-buffer">
+                            <thead>
+                                <tr class="slds-table slds-table_bordered slds-table_cell-buffer slds-max-medium-table_stacked-horizontal slds-no-row-hover slds-border_right">
+                                    <th scope="col" style="width:30px">&nbsp;</th>
+                                    <th scope="col" style="width:60px">
+                                        <div class="slds-form-element slds-align--absolute-center">
+                                            <label class="slds-checkbox">
+                                                <input type="checkbox" class="slds-input" onchange="checkAll(this)" name="chk[]"/>
+                                                <span class="slds-checkbox--faux"></span>
+                                                <span class="slds-form-element__label"></span>
+                                            </label>
+                                        </div>
+                                    </th>
+                                    <th scope="col">
+                                        <div title="{!$ObjectType.Case.fields.CaseNumber.Label}">{!$ObjectType.Case.fields.CaseNumber.Label}</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div title="{!$ObjectType.Case.fields.ContactId.Label}">{!$ObjectType.Contact.Label}</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div title="{!$ObjectType.Case.fields.Subject.Label}">{!$ObjectType.Case.fields.Subject.Label}</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div title="{!$ObjectType.Case.fields.Priority.Label}">{!$ObjectType.Case.fields.Priority.Label}</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div title="{!$ObjectType.Case.fields.Status.Label}">{!$ObjectType.Case.fields.Status.Label}</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div title="{!$ObjectType.Case.fields.OwnerId.Label}">{!$ObjectType.Case.fields.OwnerId.Label}</div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <apex:variable var="count" value="{!1}" />
+                            <apex:repeat value="{!relatedRecords}" var="caseWrapper">
+                                  <tr class="slds-hint-parent">
+                                    <td>{!count}</td>
+                                    <td>
+                                      <div class="slds-form-element slds-align--absolute-center">
+                                          <label class="slds-checkbox">
+                                              <apex:inputCheckbox styleClass="slds-input slds_checkbox_class" value="{!caseWrapper.selected}"/>
+                                              <span class="slds-checkbox--faux"></span>
+                                              <span class="slds-form-element__label"></span>
+                                          </label>
+                                      </div>
+                                    </td>
+                                    <td><a href="/{!caseWrapper.obj.Id}" target="_blank">{!caseWrapper.obj.CaseNumber}</a></td>
+                                    <td><apex:outputField value="{!caseWrapper.obj.ContactId}" /></td>
+                                    <td><a href="/{!caseWrapper.obj.Id}" target="_blank">{!caseWrapper.obj.Subject}</a></td>
+                                    <td><apex:outputField value="{!caseWrapper.obj.Priority}" /></td>
+                                    <td><apex:outputField value="{!caseWrapper.obj.Status}" /></td>
+                                    <td><apex:outputField value="{!caseWrapper.obj.OwnerId}" /></td>
+                                  </tr>
+                                    <apex:variable value="{!count+1}" var="count"/>
+                            </apex:repeat>
+                            </tbody>
+                        </table>
+                    </apex:outputPanel>
+
+                    <apex:outputPanel rendered="{!AND(currentStep == 'CASE_MERGE', NOT(itemListIsEmpty))}" layout="none">
+                        <div class="slds-grid">
+                            <div class="slds-col" style="max-width:300px;">
+                                <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-max-medium-table_stacked-horizontal slds-no-row-hover slds-border_right">
+                                    <apex:variable value="{!0}" var="count"/>
+                                    <apex:repeat value="{!fieldLabels}" var="fieldlabel">
+                                        <tr>
+                                            <td data-label="{!fieldlabel}" style="{!IF(count == 0,'background-color:#0070d2','')}">
+                                                <!-- Workarround for cell height -->
+                                                <div class="slds-form-element">
+                                                    <div class="slds-form-element__control">
+                                                        <span class="slds-checkbox">
+                                                            <input type="radio" name="options" abindex="-1" value="on" style="visibility: hidden;"/>
+                                                            <label class="slds-radio__label">
+                                                                <span class="slds-radio_faux"></span>
+                                                                <apex:outputPanel rendered="{!count == 0}" styleClass="slds-form-element__label" style="{!IF(count == 0,'color:#fff;font-weight:bold;','')}">
+                                                                    {!$Label.casemerge__master} ({!fieldlabel})
+                                                                </apex:outputPanel>
+                                                                <apex:outputPanel layout="block" rendered="{!count > 0}" styleClass="slds-form-element__label">
+                                                                    {!fieldlabel}
+                                                                </apex:outputPanel>
+                                                            </label>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <apex:variable value="{!count+1}" var="count"/>
+                                    </apex:repeat>
+                                </table>
+                            </div>
+
+                            <div class="slds-col" style="overflow-y:auto;">
+                                <div class="slds-grid">
+                                    <apex:variable value="{!0}" var="indexId"/>
+                                    <apex:repeat value="{!itemList}" var="itemKey">
+                                        <div class="slds-col">
+                                            <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-max-medium-table_stacked-horizontal slds-border_right">
+                                                <apex:variable value="{!0}" var="count"/>
+                                                <apex:repeat value="{!itemList[itemKey]}" var="field">
+                                                    <tr>
+                                                        <td data-label="{!field.renderValue}" style="{!IF(count == 0,'background-color:#0070d2','')}">
+                                                            <apex:variable value="{!IF(count == 0, 'caseId', field.apiName)}" var="apiName"/>
+                                                            <div class="slds-form-element">
+                                                                <div class="slds-form-element__control">
+                                                                    <span class="slds-checkbox">
+                                                                        <apex:outputPanel rendered="{!field.isSelectedForMerge}" layout="none">
+                                                                            <input type="radio" id="radio-{!indexId}"  name="{!apiName}" value="{!field.realValue}" checked="checked"/>
+                                                                        </apex:outputPanel>
+                                                                        <apex:outputPanel rendered="{!!field.isSelectedForMerge}" layout="none">
+                                                                            <input type="radio" id="radio-{!indexId}" name="{!apiName}" value="{!field.realValue}"/>
+                                                                        </apex:outputPanel>
+                                                                        <label class="slds-radio__label" for="radio-{!indexId}">
+                                                                            <span class="slds-radio_faux"></span>
+                                                                            <span class="slds-form-element__label" style="{!IF(count == 0,'color:#fff;font-weight:bold;','')}">
+                                                                                <!-- Workarround for cell height -->
+                                                                                <apex:outputText escape="false" value="{!BLANKVALUE(field.renderValue,'&#160;')}"/>
+                                                                            </span>
+                                                                        </label>
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <apex:variable value="{!count+1}" var="count"/>
+                                                    <apex:variable value="{!indexId+1}" var="indexId"/>
+                                                </apex:repeat>
+                                            </table>
+                                        </div>
+                                    </apex:repeat>
+                                </div>
+                            </div>
+                        </div>
+                    </apex:outputPanel>
+
+                    <apex:outputPanel rendered="{!currentStep == 'SUCCESS_SCREEN'}" layout="none">
+
+                        <div style="background:rgb(244, 246, 249);padding: 1rem;">
+                            <div class="slds-grid">
+                                <button class="slds-align_absolute-center slds-button slds-button_brand slds-m-bottom_medium" onclick="event.preventDefault();navigateTo('{!CaseParent['Id']}');">
+                                    {!$Label.casemerge__backto} {!CaseParent['Name']}
+                                </button>
+                            </div>
+
+                            <div class="slds-grid">
+                                <div class="slds-m-right_medium slds-m-left_xx-large slds-col">
+                                    <div class="slds-grid">
+                                       <div class="slds-panel slds-grid slds-grid_vertical slds-nowrap">
+                                          <div class="slds-form slds-form_stacked slds-grow slds-scrollable_y">
+                                             <div class="slds-panel__section slds-border_bottom">
+                                                <div class="slds-media">
+                                                   <div class="slds-media__body">
+                                                      <h2 class="slds-truncate slds-text-heading_small" title="{!$Label.casemerge__master} {!$ObjectType.Case.fields.CaseNumber.Label} : {!masterCaseObject.CaseNumber}">
+                                                        <a href="/{!masterCaseObject.Id}" target="_blank">
+                                                            {!$Label.casemerge__master} {!$ObjectType.Case.fields.CaseNumber.Label} : {!masterCaseObject.CaseNumber}
+                                                        </a>
+                                                      </h2>
+                                                   </div>
+                                                </div>
+                                             </div>
+                                             <div class="slds-panel__section">
+                                                <h3 class="slds-text-heading_small slds-m-bottom_medium">Information</h3>
+                                                <ul>
+                                                   <li class="slds-form-element slds-hint-parent slds-border_bottom">
+                                                      <span class="slds-form-element__label">{!$ObjectType.Case.fields.Subject.Label}</span>
+                                                      <div class="slds-form-element__control">
+                                                         <span class="slds-form-element__static">{!masterCaseObject.Subject}</span>
+                                                      </div>
+                                                   </li>
+                                                   <li class="slds-form-element slds-hint-parent slds-border_bottom">
+                                                      <span class="slds-form-element__label">{!$ObjectType.Contact.Label}</span>
+                                                      <div class="slds-form-element__control">
+                                                         <span class="slds-form-element__static">
+                                                            <a href="/{!masterCaseObject.ContactId}" target="_blank">{!masterCaseObject.Contact.Name}</a>
+                                                         </span>
+                                                      </div>
+                                                   </li>
+                                                   <li class="slds-form-element slds-hint-parent slds-border_bottom">
+                                                      <span class="slds-form-element__label">{!$ObjectType.Case.fields.Priority.Label}</span>
+                                                      <div class="slds-form-element__control">
+                                                         <span class="slds-form-element__static">{!masterCaseObject.Priority}</span>
+                                                      </div>
+                                                   </li>
+                                                   <li class="slds-form-element slds-hint-parent slds-border_bottom">
+                                                      <span class="slds-form-element__label">{!$ObjectType.Case.fields.Status.Label}</span>
+                                                      <div class="slds-form-element__control">
+                                                         <span class="slds-form-element__static">{!masterCaseObject.Status}</span>
+                                                      </div>
+                                                   </li>
+                                                   <li class="slds-form-element slds-hint-parent slds-border_bottom">
+                                                      <span class="slds-form-element__label">{!$ObjectType.Case.fields.Description.Label}</span>
+                                                      <div class="slds-form-element__control">
+                                                         <span class="slds-form-element__static slds-text-longform">{!masterCaseObject.Description}</span>
+                                                      </div>
+                                                   </li>
+                                                </ul>
+                                             </div>
+                                          </div>
+                                       </div>
+                                    </div>
+                                </div>
+
+                                <div class="slds-m-left_medium slds-m-right_xx-large slds-col">
+                                    <div class="slds-grid">
+                                        <div class="slds-panel slds-grid slds-grid_vertical slds-nowrap">
+                                            <div class="slds-form slds-form_stacked slds-grow slds-scrollable_y">
+                                                <div class="slds-panel__section slds-border_bottom">
+                                                    <div class="slds-media">
+                                                        <div class="slds-media__body">
+                                                            <h2 class="slds-truncate slds-text-heading_small" title="MERGED CASES">
+                                                                 MERGED CASES
+                                                            </h2>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="slds-panel__section">
+                                                    <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+                                                       <thead>
+                                                            <tr class="slds-text-title_caps">
+                                                                <th scope="col">
+                                                                    <div title="{!$ObjectType.Case.fields.CaseNumber.Label}">{!$ObjectType.Case.fields.CaseNumber.Label}</div>
+                                                                </th>
+                                                                <th scope="col">
+                                                                    <div title="{!$ObjectType.Case.fields.ContactId.Label}">{!$ObjectType.Contact.Label}</div>
+                                                                </th>
+                                                                <th scope="col">
+                                                                    <div title="{!$ObjectType.Case.fields.Subject.Label}">{!$ObjectType.Case.fields.Subject.Label}</div>
+                                                                </th>
+                                                                <th scope="col">
+                                                                    <div title="{!$ObjectType.Case.fields.Priority.Label}">{!$ObjectType.Case.fields.Priority.Label}</div>
+                                                                </th>
+                                                                <th scope="col">
+                                                                    <div title="{!$ObjectType.Case.fields.Status.Label}">{!$ObjectType.Case.fields.Status.Label}</div>
+                                                                </th>
+                                                            </tr>
+                                                       </thead>
+                                                       <tbody>
+                                                            <apex:repeat value="{!mergedCaseObjects}" var="item">
+                                                                <tr>
+                                                                    <th scope="col">
+                                                                        <div class="slds-truncate" title="{!item.CaseNumber}">
+                                                                            <a href="/{!item.Id}" target="_blank">{!item.CaseNumber}</a>
+                                                                        </div>
+                                                                    </th>
+                                                                    <th scope="col">
+                                                                        <div class="slds-truncate" title="{!item.ContactId}">
+                                                                            <a href="/{!item.ContactId}" target="_blank">{!item.Contact.Name}</a>
+                                                                        </div>
+                                                                    </th>
+                                                                    <th scope="col">
+                                                                        <div class="slds-truncate" title="{!item.Subject}">
+                                                                            <apex:outputField value="{!item.Subject}"/>
+                                                                        </div>
+                                                                    </th>
+                                                                    <th scope="col">
+                                                                        <div class="slds-truncate" title="{!item.Priority}">
+                                                                            <apex:outputField value="{!item.Priority}"/>
+                                                                        </div>
+                                                                    </th>
+                                                                    <th scope="col">
+                                                                        <div class="slds-truncate" title="{!item.Status}">
+                                                                            <apex:outputField value="{!item.Status}"/>
+                                                                        </div>
+                                                                    </th>
+                                                                </tr>
+                                                            </apex:repeat>
+                                                       </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="slds-grid">
+                                <button class="slds-align_absolute-center slds-button slds-button_brand slds-m-top_medium" onclick="event.preventDefault();navigateTo('{!CaseParent['Id']}');">
+                                    {!$Label.casemerge__backto} {!CaseParent['Name']}
+                                </button>
+                            </div>
+                        </div>
+                    </apex:outputPanel>
+                </div>
+                <!-- Lightning Javascript -->
+                <script type="text/javascript">
+                    function navigateTo(url){
+                        parent.location.href='/' + url;
+                    }
+                </script>
+            </body>
+        </apex:outputPanel>
+
+        <apex:outputPanel layout="none" rendered="{!!IsLightningExperience}">
+            <apex:sectionHeader title="{!$Label.casemerge__title}" />
+
+            <apex:pageMessages />
+
+            <apex:pageBlock title="{!$Label.casemerge__records_selection_legend}" rendered="{!currentStep == 'CASE_SELECTION'}">
+
+                <apex:pageBlockButtons location="both">
+                    <a href="/{!CaseParent['Id']}" class="btn" style="text-decoration: none;">Cancel</a>
+                    <apex:commandButton action="{!nextStep}" rendered="{!ShowNextButton}" value="{!$Label.casemerge__button_next}"/>
+                </apex:pageBlockButtons>
+
+                <apex:dataTable value="{!relatedRecords}" var="caseWrapper" styleClass="list">
+                    <apex:column width="3%">
+                        <apex:facet name="header"><input type="checkbox" onchange="checkAll(this)" name="chk[]"/></apex:facet>
+                        <apex:inputCheckbox value="{!caseWrapper.selected}" selected="{!caseWrapper.selected}"/>
+                    </apex:column>
+                    <apex:column >
+                        <apex:facet name="header">{!$ObjectType.Case.Fields.CaseNumber.Label}</apex:facet>
+                        <a href="/{!caseWrapper.obj.Id}" target="_blank">{!caseWrapper.obj.CaseNumber}</a>
+                    </apex:column>
+                    <apex:column >
+                        <apex:facet name="header">{!$ObjectType.Case.fields.ContactId.Label}</apex:facet>
+                        <apex:outputField value="{!caseWrapper.obj.ContactId}" />
+                    </apex:column>
+                    <apex:column >
+                        <apex:facet name="header">{!$ObjectType.Case.fields.Subject.Label}</apex:facet>
+                        <a href="/{!caseWrapper.obj.Id}" target="_blank">{!caseWrapper.obj.Subject}</a>
+                    </apex:column>
+                    <apex:column >
+                        <apex:facet name="header">{!$ObjectType.Case.fields.Priority.Label}</apex:facet>
+                        {!caseWrapper.obj.Priority}
+                    </apex:column>
+                    <apex:column >
+                        <apex:facet name="header">{!$ObjectType.Case.fields.CreatedDate.Label}</apex:facet>
+                        <apex:outputField value="{!caseWrapper.obj.CreatedDate}" />
+                    </apex:column>
+                    <apex:column >
+                        <apex:facet name="header">{!$ObjectType.Case.fields.Status.Label}</apex:facet>
+                        {!caseWrapper.obj.Status}
+                    </apex:column>
+                    <apex:column >
+                        <apex:facet name="header">{!$ObjectType.Case.fields.OwnerId.Label}</apex:facet>
+                        <apex:outputField value="{!caseWrapper.obj.OwnerId}" />
+                    </apex:column>
+                </apex:dataTable>
+            </apex:pageBlock>
+
+            <apex:pageBlock rendered="{!currentStep == 'CASE_MERGE'}" title="{!$Label.casemerge__values_selection_legend}">
+                <apex:pageBlockButtons location="both">
+                    <a href="/{!CaseParent['Id']}" class="btn" style="text-decoration: none;"> Cancel </a>
+                    <apex:commandButton action="{!prevStep}" rendered="{!ShowPrevButton}" value="Previous"/>
+                    <apex:commandButton action="{!nextStep}" rendered="{!ShowNextButton}" value="Next"/>
+                </apex:pageBlockButtons>
+
+                <table>
+                    <tr>
+                        <td>
+                            <table class="list">
+                                <apex:variable var="count" value="{!0}" />
+                                <apex:repeat value="{!fieldLabels}" var="fieldlabel">
+                                    <tr>
+                                        <td style="{!IF(count==0,'color:white;','')}white-space:nowrap;height:20px;min-width:150px;"  class="{!IF(count==0,'brandPrimaryBgr primaryPalette','')}">
+                                            <b>
+                                                <apex:outputPanel layout="none" rendered="{!count == 0}"> MASTER ({!fieldlabel})</apex:outputPanel>
+                                                <apex:outputPanel layout="none" rendered="{!count > 0}">{!fieldlabel}</apex:outputPanel>
+                                            </b>
+                                        </td>
+                                    </tr>
+                                    <apex:variable value="{!count+1}" var="count"/>
+                                </apex:repeat>
+                            </table>
+                        </td>
+                        <apex:repeat value="{!itemList}" var="itemKey">
+                            <apex:variable var="count" value="{!0}" />
+                            <td style="padding:0px;">
+                                <table class="list" style="border:0px;">
+                                    <apex:repeat value="{!itemList[itemKey]}" var="field">
+                                        <tr>
+                                            <td style="{!IF(count==0,'color:white;','')}white-space:nowrap;height:20px;min-width:150px;"  class="{!IF(count==0,'brandPrimaryBgr primaryPalette','')}">
+                                                <apex:variable value="{!IF(count == 0, 'caseId', field.apiName)}" var="apiName"/>
+                                                <apex:outputPanel rendered="{!field.isSelectedForMerge}" layout="none">
+                                                    <input type="radio" name="{!apiName}" value="{!field.realValue}" checked="checked"/>
+                                                </apex:outputPanel>
+                                                <apex:outputPanel rendered="{!!field.isSelectedForMerge}" layout="none">
+                                                    <input type="radio" name="{!apiName}" value="{!field.realValue}"/>
+                                                </apex:outputPanel>
+                                                {!field.renderValue}
+                                            </td>
+                                        </tr>
+                                        <apex:variable value="{!count+1}" var="count"/>
+                                    </apex:repeat>
+                                </table>
+                            </td>
+                        </apex:repeat>
+                    </tr>
+                </table>
+            </apex:pageBlock>
+
+            <apex:outputPanel rendered="{!currentStep == 'SUCCESS_SCREEN'}" layout="none">
+                <apex:pageBlock mode="edit">
+                    <apex:pageBlockButtons location="both">
+                        <a href="/{!CaseParent['Id']}" class="btn" style="text-decoration: none;">Back to {!CaseParent['Name']}</a>
+                    </apex:pageBlockButtons>
+                    
+                    <table class="list" width="100%">
+                        <tr>
+                            <td width="50%">
+                                <div class="bPageBlock brandSecondaryBrd bDetailBlock secondaryPalette">
+                                   <div class="pbHeader">
+                                      <table cellspacing="0" cellpadding="0" border="0">
+                                         <tbody>
+                                            <tr>
+                                               <td class="pbTitle">
+                                                  <img src="/img/s.gif" alt="" class="minWidth" title="" data-fieldname="milestonestatusicon" data-fieldtype="Text" width="1" height="1"/>
+                                                  <h2 class="mainTitle">MASTER {!$ObjectType.Case.fields.CaseNumber.Label} : {!masterCaseObject.CaseNumber}</h2>
+                                               </td>
+                                            </tr>
+                                         </tbody>
+                                      </table>
+                                   </div>
+                                   <div class="pbBody">
+                                      <div class="pbSubsection">
+                                         <table class="detailList" cellspacing="0" cellpadding="0" border="0">
+                                            <tbody>
+                                               <tr>
+                                                  <td class="labelCol">{!$ObjectType.Case.fields.Subject.Label}</td>
+                                                  <td class="dataCol col02">{!masterCaseObject.Subject}</td>
+                                                  <td class="labelCol">{!$ObjectType.Contact.Label}</td>
+                                                  <td class="dataCol">{!masterCaseObject.Contact.Name}</td>
+                                               </tr>
+                                               <tr>
+                                                  <td class="labelCol">{!$ObjectType.Case.fields.Priority.Label}</td>
+                                                  <td class="dataCol col02">{!masterCaseObject.Priority}</td>
+                                                  <td class="labelCol">{!$ObjectType.Case.fields.Status.Label}</td>
+                                                  <td class="dataCol">{!masterCaseObject.Status}</td>
+                                               </tr>
+                                               <tr>
+                                                  <td class="labelCol">{!$ObjectType.Case.fields.Description.Label}</td>
+                                                  <td class="dataCol col02" colspan="3">{!masterCaseObject.Description}</td>
+                                               </tr>
+                                            </tbody>
+                                         </table>
+                                      </div>
+                                   </div>
+                                   <div class="pbFooter secondaryPalette"><div class="bg"></div></div>
+                                </div>
+                            </td>
+                            <td width="50%">
+                                 <div class="bPageBlock brandSecondaryBrd bDetailBlock secondaryPalette">
+                                    <div class="pbHeader">
+                                        <table cellspacing="0" cellpadding="0" border="0">
+                                            <tbody>
+                                                <tr>
+                                                    <td class="pbTitle">
+                                                        <img class="minWidth" data-fieldname="milestonestatusicon" data-fieldtype="Text" src="/img/s.gif" width="1" height="1"/>
+                                                        <h2 class="mainTitle">Merged Cases</h2>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="pbBody">
+                                        <div class="pbSubsection">
+                                            <apex:dataTable value="{!mergedCaseObjects}" var="item" rowClasses="odd,even" width="100%">
+                                                <apex:column >
+                                                    <apex:facet name="header">{!$ObjectType.Case.fields.CaseNumber.Label}</apex:facet>
+                                                    <a href="/{!item.Id}" target="_blank">{!item.CaseNumber}</a>
+                                                </apex:column>
+                                                <apex:column >
+                                                    <apex:facet name="header">{!$ObjectType.Contact.Label}</apex:facet>
+                                                    <a href="/{!item.ContactId}" target="_blank">{!item.Contact.Name}</a>
+                                                </apex:column>
+                                                <apex:column >
+                                                    <apex:facet name="header">{!$ObjectType.Case.fields.Subject.Label}</apex:facet>
+                                                    <apex:outputField value="{!item.Subject}"/>
+                                                </apex:column>
+                                                <apex:column >
+                                                    <apex:facet name="header">{!$ObjectType.Case.fields.Priority.Label}</apex:facet>
+                                                    <apex:outputField value="{!item.Priority}"/>
+                                                </apex:column>
+                                                <apex:column >
+                                                    <apex:facet name="header">{!$ObjectType.Case.fields.Status.Label}</apex:facet>
+                                                    <apex:outputField value="{!item.Status}"/>
+                                                </apex:column>
+                                            </apex:dataTable>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                            </td>
+                        </tr>
+                    </table>
+                </apex:pageBlock>
+            </apex:outputPanel>
+        </apex:outputPanel>
+    </apex:form>
+
+    <!-- Shared Javascript -->
+    <script type="text/javascript">
+        function checkAll(ele) {
+            var checkboxes = document.getElementsByTagName('input');
+            if (ele.checked) {
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if (checkboxes[i].type == 'checkbox') {
+                        checkboxes[i].checked = true;
+                    }
+                }
+            } 
+            else {
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if (checkboxes[i].type == 'checkbox') {
+                        checkboxes[i].checked = false;
+                    }
+                }
+            }
+        }
+    </script>
+
+</apex:page>
