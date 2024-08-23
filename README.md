@@ -1,4 +1,4 @@
-# Case Merge
+# Salesforce Data Clean - Case Merge
 
 Please perform the following steps:
 
